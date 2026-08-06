@@ -1,0 +1,44 @@
+cff-version: 1.2.0
+message: "If you reference ExecutionProof in academic or research work, please cite it as below."
+title: "ExecutionProof — Pre-Execution Governance Layer for Consequential AI Actions"
+abstract: >-
+  ExecutionProof is an independent pre-execution governance layer for
+  consequential AI actions. It verifies an agent's authority, evidence,
+  constraints, and execution control before an action runs, returning an
+  ALLOW / HOLD / DENY decision and issuing a tamper-evident ProofRecord for
+  every decision. Payment authorization is the first production deployment
+  boundary; the same architecture governs infrastructure commands, data
+  release, access changes, and other irreversible actions. This repository is
+  the product-grade reference for the ExecutionProof API, architecture, and
+  deployment model, governed by the RF-100 verified-execution standard.
+type: software
+authors:
+  - given-names: Derek
+    family-names: Hone
+    affiliation: "Remnant Fieldworks Inc."
+    email: derek@ownerremnantfieldworks.com
+version: 1.0.0-public
+date-released: 2026-08-06
+license: MIT
+repository-code: "https://github.com/derekhone/executionproof"
+url: "https://executionproof.io"
+keywords:
+  - AI governance
+  - pre-execution verification
+  - agent authorization
+  - ProofRecord
+  - post-quantum signing
+  - ML-DSA-65
+  - ALLOW HOLD DENY
+  - Verification Before Execution
+identifiers:
+  - type: url
+    value: "https://zenodo.org/communities/remnant-fieldworks"
+    description: "Remnant Fieldworks Zenodo community (preregistered experiments and evidence records)"
+references:
+  - type: standard
+    title: "RF-100 — Verified Execution Governance Standard (v1.0, public review)"
+    authors:
+      - given-names: Derek
+        family-names: Hone
+    repository-code: "https://github.com/derekhone/rf-100"

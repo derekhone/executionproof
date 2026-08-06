@@ -1,0 +1,235 @@
+{
+  "boundaryId": "payment-auth-prod",
+  "description": "Payment authorization is the first production deployment boundary for ExecutionProof. Each scenario shows a request to POST /v2/boundaries/payment-auth-prod/verify and the verdict + ProofRecord returned. ExecutionProof decides whether the payment may be authorized; a downstream execution/rail partner (e.g. Stripe) performs the actual transfer for an ALLOW. ExecutionProof does not move money.",
+  "scenarios": [
+    {
+      "name": "ALLOW — authorized, within limits",
+      "summary": "An authorized billing agent authorizes a small, well-evidenced invoice payment. All four engines pass.",
+      "request": {
+        "action": {
+          "type": "payment.authorize",
+          "amountMinor": 4200,
+          "currency": "USD",
+          "payee": "acct_downstream_9931",
+          "reference": "inv_20260806_00042"
+        },
+        "principal": {
+          "id": "agent://billing-bot/prod",
+          "authProof": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImJpbGxpbmctYm90In0"
+        },
+        "evidence": {
+          "nonce": "9f2c7b1e5a3d4c88",
+          "context": {
+            "invoiceVerified": true,
+            "payeeAllowListed": true
+          }
+        },
+        "requestedAt": "2026-08-06T14:00:00Z"
+      },
+      "response": {
+        "verdict": "ALLOW",
+        "boundaryId": "payment-auth-prod",
+        "shortCircuitEngine": null,
+        "engineResults": [
+          { "engine": "authority", "result": "PASS" },
+          { "engine": "evidence", "result": "PASS" },
+          { "engine": "constraint", "result": "PASS" },
+          { "engine": "control", "result": "PASS" }
+        ],
+        "errorCode": null,
+        "proofId": "ep_pr_01J9ZK7QW3H8X2M4N6P0R5T7VB",
+        "proofRecord": {
+          "proofId": "ep_pr_01J9ZK7QW3H8X2M4N6P0R5T7VB",
+          "boundaryId": "payment-auth-prod",
+          "verdict": "ALLOW",
+          "decision": {
+            "shortCircuitEngine": null,
+            "engineResults": [
+              { "engine": "authority", "result": "PASS" },
+              { "engine": "evidence", "result": "PASS" },
+              { "engine": "constraint", "result": "PASS" },
+              { "engine": "control", "result": "PASS" }
+            ],
+            "errorCode": null
+          },
+          "request": {
+            "actionDigest": "sha256:1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014",
+            "nonce": "9f2c7b1e5a3d4c88",
+            "requestedAt": "2026-08-06T14:00:00Z"
+          },
+          "hashChain": {
+            "prevProofHash": "sha256:0d3c8f1a2b5e6d7c8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f60718293a4b5c",
+            "thisProofHash": "sha256:7c2e9a4b1d6f3084c5b7a9e0d2f4681a3c5e7092b4d6f81a3c5e70925b7d9f0e"
+          },
+          "signatures": {
+            "hmac": "b0Zt0m9c2Q1r8s7t6u5v4w3x2y1z0A9B8C7D6E5F4G3H2I1J0K==",
+            "mldsa65": "MEUCIQD<truncated-ml-dsa-65-signature-base64>...AZ9k",
+            "kmsKeyId": "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08",
+            "pqPublicKeyId": "pq-2026-08"
+          },
+          "issuedAt": "2026-08-06T14:00:00.128Z"
+        }
+      }
+    },
+    {
+      "name": "HOLD — exceeds auto-approve threshold (2-of-3 quorum)",
+      "summary": "A large payment is not rejected but requires an M-of-N approval quorum. The Constraint engine flags the amount; the verdict is HOLD until approvals are submitted to POST /v2/boundaries/payment-auth-prod/approve.",
+      "request": {
+        "action": {
+          "type": "payment.authorize",
+          "amountMinor": 25000000,
+          "currency": "USD",
+          "payee": "acct_downstream_5567",
+          "reference": "inv_20260806_00099"
+        },
+        "principal": {
+          "id": "agent://billing-bot/prod",
+          "authProof": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImJpbGxpbmctYm90In0"
+        },
+        "evidence": {
+          "nonce": "3a7d9e2f1b8c4d60",
+          "context": {
+            "invoiceVerified": true,
+            "payeeAllowListed": true
+          }
+        },
+        "requestedAt": "2026-08-06T14:05:00Z"
+      },
+      "response": {
+        "verdict": "HOLD",
+        "boundaryId": "payment-auth-prod",
+        "shortCircuitEngine": "constraint",
+        "engineResults": [
+          { "engine": "authority", "result": "PASS" },
+          { "engine": "evidence", "result": "PASS" },
+          { "engine": "constraint", "result": "FAIL", "detail": "amount 250000.00 USD exceeds auto-approve threshold 100000.00 USD; M-of-N approval required" },
+          { "engine": "control", "result": "SKIPPED" }
+        ],
+        "errorCode": "EP-7003",
+        "hold": {
+          "required": 2,
+          "eligible": 3,
+          "received": 0,
+          "satisfied": false,
+          "approvers": []
+        },
+        "proofId": "ep_pr_01J9ZK9F3B2C4D6E8G0H2J4K6M",
+        "proofRecord": {
+          "proofId": "ep_pr_01J9ZK9F3B2C4D6E8G0H2J4K6M",
+          "boundaryId": "payment-auth-prod",
+          "verdict": "HOLD",
+          "decision": {
+            "shortCircuitEngine": "constraint",
+            "engineResults": [
+              { "engine": "authority", "result": "PASS" },
+              { "engine": "evidence", "result": "PASS" },
+              { "engine": "constraint", "result": "FAIL", "detail": "amount exceeds auto-approve threshold; M-of-N approval required" },
+              { "engine": "control", "result": "SKIPPED" }
+            ],
+            "errorCode": "EP-7003"
+          },
+          "request": {
+            "actionDigest": "sha256:9d2b7c4e1f6a8305b2c4d6e8f0a1b3c5d7e9f0a2b4c6d8e0f2a4b6c8d0e2f4a6",
+            "nonce": "3a7d9e2f1b8c4d60",
+            "requestedAt": "2026-08-06T14:05:00Z"
+          },
+          "hashChain": {
+            "prevProofHash": "sha256:7c2e9a4b1d6f3084c5b7a9e0d2f4681a3c5e7092b4d6f81a3c5e70925b7d9f0e",
+            "thisProofHash": "sha256:2f8a1c5e7b9d0364a2c4e6081b3d5f7092a4c6e8b0d2f4a6c8e02f4a6c8e0b2d"
+          },
+          "signatures": {
+            "hmac": "c1Au1n0d3R2s9t8u7v6w5x4y3z2A1B0C9D8E7F6G5H4I3J2K1L==",
+            "mldsa65": "MEQCIF9<truncated-ml-dsa-65-signature-base64>...Bq2m",
+            "kmsKeyId": "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08",
+            "pqPublicKeyId": "pq-2026-08"
+          },
+          "issuedAt": "2026-08-06T14:05:00.094Z"
+        }
+      },
+      "followUp": {
+        "description": "Two distinct eligible approvers submit approvals; the second satisfies the 2-of-3 quorum and clears the HOLD.",
+        "approvalRequests": [
+          {
+            "endpoint": "POST /v2/boundaries/payment-auth-prod/approve",
+            "body": { "proofId": "ep_pr_01J9ZK9F3B2C4D6E8G0H2J4K6M", "approver": "user://ops-lead/alice", "approvalRef": "CHG-4471" },
+            "response": { "proofId": "ep_pr_01J9ZK9F3B2C4D6E8G0H2J4K6M", "cleared": false, "hold": { "required": 2, "eligible": 3, "received": 1, "satisfied": false, "approvers": ["user://ops-lead/alice"] } }
+          },
+          {
+            "endpoint": "POST /v2/boundaries/payment-auth-prod/approve",
+            "body": { "proofId": "ep_pr_01J9ZK9F3B2C4D6E8G0H2J4K6M", "approver": "user://finance-director/bob", "approvalRef": "CHG-4471" },
+            "response": { "proofId": "ep_pr_01J9ZK9F3B2C4D6E8G0H2J4K6M", "cleared": true, "hold": { "required": 2, "eligible": 3, "received": 2, "satisfied": true, "approvers": ["user://ops-lead/alice", "user://finance-director/bob"] }, "newProofId": "ep_pr_01J9ZKC5H7J9L1N3P5R7T9V1XZ" }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DENY — replayed nonce (EP-7008)",
+      "summary": "A previously-used nonce is re-submitted. The Evidence engine's replay protection rejects it before any constraint or control check. Verdict DENY.",
+      "request": {
+        "action": {
+          "type": "payment.authorize",
+          "amountMinor": 4200,
+          "currency": "USD",
+          "payee": "acct_downstream_9931",
+          "reference": "inv_20260806_00042"
+        },
+        "principal": {
+          "id": "agent://billing-bot/prod",
+          "authProof": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImJpbGxpbmctYm90In0"
+        },
+        "evidence": {
+          "nonce": "9f2c7b1e5a3d4c88",
+          "context": {
+            "invoiceVerified": true,
+            "payeeAllowListed": true
+          }
+        },
+        "requestedAt": "2026-08-06T14:10:00Z"
+      },
+      "response": {
+        "verdict": "DENY",
+        "boundaryId": "payment-auth-prod",
+        "shortCircuitEngine": "evidence",
+        "engineResults": [
+          { "engine": "authority", "result": "PASS" },
+          { "engine": "evidence", "result": "FAIL", "detail": "nonce 9f2c7b1e5a3d4c88 already used; replay rejected" },
+          { "engine": "constraint", "result": "SKIPPED" },
+          { "engine": "control", "result": "SKIPPED" }
+        ],
+        "errorCode": "EP-7008",
+        "proofId": "ep_pr_01J9ZKB2N4Q6S8U0W2Y4A6C8E",
+        "proofRecord": {
+          "proofId": "ep_pr_01J9ZKB2N4Q6S8U0W2Y4A6C8E",
+          "boundaryId": "payment-auth-prod",
+          "verdict": "DENY",
+          "decision": {
+            "shortCircuitEngine": "evidence",
+            "engineResults": [
+              { "engine": "authority", "result": "PASS" },
+              { "engine": "evidence", "result": "FAIL", "detail": "nonce already used; replay rejected" },
+              { "engine": "constraint", "result": "SKIPPED" },
+              { "engine": "control", "result": "SKIPPED" }
+            ],
+            "errorCode": "EP-7008"
+          },
+          "request": {
+            "actionDigest": "sha256:1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014",
+            "nonce": "9f2c7b1e5a3d4c88",
+            "requestedAt": "2026-08-06T14:10:00Z"
+          },
+          "hashChain": {
+            "prevProofHash": "sha256:2f8a1c5e7b9d0364a2c4e6081b3d5f7092a4c6e8b0d2f4a6c8e02f4a6c8e0b2d",
+            "thisProofHash": "sha256:4a6c8e02f4a6c8e0b2d4f6081a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8"
+          },
+          "signatures": {
+            "hmac": "d2Bv2o1e4S3t0u9v8w7x6y5z4A3B2C1D0E9F8G7H6I5J4K3L2M==",
+            "mldsa65": "MEUCIQCk<truncated-ml-dsa-65-signature-base64>...Cr3n",
+            "kmsKeyId": "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08",
+            "pqPublicKeyId": "pq-2026-08"
+          },
+          "issuedAt": "2026-08-06T14:10:00.061Z"
+        }
+      }
+    }
+  ]
+}

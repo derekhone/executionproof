@@ -1,0 +1,232 @@
+{
+  "boundaryId": "infra-command-prod",
+  "description": "The SAME four-engine ExecutionProof architecture that governs payment authorization also governs destructive infrastructure commands. This boundary shows ExecutionProof is not payments-only. Each scenario is a request to POST /v2/boundaries/infra-command-prod/verify and the verdict + ProofRecord returned. ExecutionProof decides whether the command may execute; the downstream control plane (e.g. Kubernetes, cloud API, Terraform runner) performs it for an ALLOW.",
+  "scenarios": [
+    {
+      "name": "ALLOW — authorized, within blast radius",
+      "summary": "An authorized SRE agent restarts a single stateless pod in a non-production namespace. All four engines pass.",
+      "request": {
+        "action": {
+          "type": "infra.command",
+          "command": "kubectl rollout restart deployment/web-frontend",
+          "target": "cluster/dev-us-east-1/ns/web",
+          "blastRadius": "single-deployment"
+        },
+        "principal": {
+          "id": "agent://sre-bot/prod",
+          "authProof": "eyJhbGciOiJFUzI1NiIsImtpZCI6InNyZS1ib3QifQ"
+        },
+        "evidence": {
+          "nonce": "5b1e8d2a9c7f3046",
+          "context": {
+            "changeTicket": "CHG-8801",
+            "windowOpen": true
+          }
+        },
+        "requestedAt": "2026-08-06T15:00:00Z"
+      },
+      "response": {
+        "verdict": "ALLOW",
+        "boundaryId": "infra-command-prod",
+        "shortCircuitEngine": null,
+        "engineResults": [
+          { "engine": "authority", "result": "PASS" },
+          { "engine": "evidence", "result": "PASS" },
+          { "engine": "constraint", "result": "PASS" },
+          { "engine": "control", "result": "PASS" }
+        ],
+        "errorCode": null,
+        "proofId": "ep_pr_01J9ZM1A3C5E7G9J1L3N5Q7S9U",
+        "proofRecord": {
+          "proofId": "ep_pr_01J9ZM1A3C5E7G9J1L3N5Q7S9U",
+          "boundaryId": "infra-command-prod",
+          "verdict": "ALLOW",
+          "decision": {
+            "shortCircuitEngine": null,
+            "engineResults": [
+              { "engine": "authority", "result": "PASS" },
+              { "engine": "evidence", "result": "PASS" },
+              { "engine": "constraint", "result": "PASS" },
+              { "engine": "control", "result": "PASS" }
+            ],
+            "errorCode": null
+          },
+          "request": {
+            "actionDigest": "sha256:a1c3e5709b2d4f6081a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e46",
+            "nonce": "5b1e8d2a9c7f3046",
+            "requestedAt": "2026-08-06T15:00:00Z"
+          },
+          "hashChain": {
+            "prevProofHash": null,
+            "thisProofHash": "sha256:e5709b2d4f6081a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e468135"
+          },
+          "signatures": {
+            "hmac": "e3Cw3p2f5T4u1v0w9x8y7z6A5B4C3D2E1F0G9H8I7J6K5L4M3N==",
+            "mldsa65": "MEUCIQDm<truncated-ml-dsa-65-signature-base64>...Ds4o",
+            "kmsKeyId": "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08",
+            "pqPublicKeyId": "pq-2026-08"
+          },
+          "issuedAt": "2026-08-06T15:00:00.112Z"
+        }
+      }
+    },
+    {
+      "name": "HOLD — production deletion requires 2-of-2 quorum",
+      "summary": "A destructive command targets a production database. It is not rejected, but the Constraint engine flags the blast radius and the verdict is HOLD requiring a 2-of-2 approval quorum submitted to the approve endpoint.",
+      "request": {
+        "action": {
+          "type": "infra.command",
+          "command": "terraform destroy -target=aws_rds_cluster.orders",
+          "target": "cluster/prod-us-east-1/rds/orders",
+          "blastRadius": "production-datastore"
+        },
+        "principal": {
+          "id": "agent://sre-bot/prod",
+          "authProof": "eyJhbGciOiJFUzI1NiIsImtpZCI6InNyZS1ib3QifQ"
+        },
+        "evidence": {
+          "nonce": "7d3f1a9e6c2b8540",
+          "context": {
+            "changeTicket": "CHG-8815",
+            "windowOpen": true
+          }
+        },
+        "requestedAt": "2026-08-06T15:05:00Z"
+      },
+      "response": {
+        "verdict": "HOLD",
+        "boundaryId": "infra-command-prod",
+        "shortCircuitEngine": "constraint",
+        "engineResults": [
+          { "engine": "authority", "result": "PASS" },
+          { "engine": "evidence", "result": "PASS" },
+          { "engine": "constraint", "result": "FAIL", "detail": "blast radius 'production-datastore' exceeds auto-approve policy; M-of-N approval required" },
+          { "engine": "control", "result": "SKIPPED" }
+        ],
+        "errorCode": "EP-7003",
+        "hold": {
+          "required": 2,
+          "eligible": 2,
+          "received": 0,
+          "satisfied": false,
+          "approvers": []
+        },
+        "proofId": "ep_pr_01J9ZM3C5E7G9J1L3N5Q7S9U1W",
+        "proofRecord": {
+          "proofId": "ep_pr_01J9ZM3C5E7G9J1L3N5Q7S9U1W",
+          "boundaryId": "infra-command-prod",
+          "verdict": "HOLD",
+          "decision": {
+            "shortCircuitEngine": "constraint",
+            "engineResults": [
+              { "engine": "authority", "result": "PASS" },
+              { "engine": "evidence", "result": "PASS" },
+              { "engine": "constraint", "result": "FAIL", "detail": "blast radius exceeds auto-approve policy; M-of-N approval required" },
+              { "engine": "control", "result": "SKIPPED" }
+            ],
+            "errorCode": "EP-7003"
+          },
+          "request": {
+            "actionDigest": "sha256:c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c",
+            "nonce": "7d3f1a9e6c2b8540",
+            "requestedAt": "2026-08-06T15:05:00Z"
+          },
+          "hashChain": {
+            "prevProofHash": "sha256:e5709b2d4f6081a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e468135",
+            "thisProofHash": "sha256:092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e46"
+          },
+          "signatures": {
+            "hmac": "f4Dx4q3g6U5v2w1x0y9z8A7B6C5D4E3F2G1H0I9J8K7L6M5N4O==",
+            "mldsa65": "MEQCIGr<truncated-ml-dsa-65-signature-base64>...Et5p",
+            "kmsKeyId": "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08",
+            "pqPublicKeyId": "pq-2026-08"
+          },
+          "issuedAt": "2026-08-06T15:05:00.077Z"
+        }
+      },
+      "followUp": {
+        "description": "Two distinct eligible approvers clear the 2-of-2 quorum before the destroy command is eligible to run.",
+        "approvalRequests": [
+          {
+            "endpoint": "POST /v2/boundaries/infra-command-prod/approve",
+            "body": { "proofId": "ep_pr_01J9ZM3C5E7G9J1L3N5Q7S9U1W", "approver": "user://sre-oncall/carol", "approvalRef": "CHG-8815" },
+            "response": { "proofId": "ep_pr_01J9ZM3C5E7G9J1L3N5Q7S9U1W", "cleared": false, "hold": { "required": 2, "eligible": 2, "received": 1, "satisfied": false, "approvers": ["user://sre-oncall/carol"] } }
+          },
+          {
+            "endpoint": "POST /v2/boundaries/infra-command-prod/approve",
+            "body": { "proofId": "ep_pr_01J9ZM3C5E7G9J1L3N5Q7S9U1W", "approver": "user://platform-eng/dave", "approvalRef": "CHG-8815" },
+            "response": { "proofId": "ep_pr_01J9ZM3C5E7G9J1L3N5Q7S9U1W", "cleared": true, "hold": { "required": 2, "eligible": 2, "received": 2, "satisfied": true, "approvers": ["user://sre-oncall/carol", "user://platform-eng/dave"] }, "newProofId": "ep_pr_01J9ZM5E7G9J1L3N5Q7S9U1W3Y" }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DENY — unauthorized principal (EP-7001)",
+      "summary": "A principal not enrolled to issue production infrastructure commands attempts a destructive action. The Authority engine rejects it immediately; the pipeline short-circuits. Verdict DENY.",
+      "request": {
+        "action": {
+          "type": "infra.command",
+          "command": "kubectl delete namespace payments",
+          "target": "cluster/prod-us-east-1/ns/payments",
+          "blastRadius": "production-namespace"
+        },
+        "principal": {
+          "id": "agent://analytics-bot/prod",
+          "authProof": "eyJhbGciOiJFUzI1NiIsImtpZCI6ImFuYWx5dGljcy1ib3QifQ"
+        },
+        "evidence": {
+          "nonce": "2c8a4f0d7b3e9165",
+          "context": {
+            "changeTicket": "CHG-8820",
+            "windowOpen": true
+          }
+        },
+        "requestedAt": "2026-08-06T15:10:00Z"
+      },
+      "response": {
+        "verdict": "DENY",
+        "boundaryId": "infra-command-prod",
+        "shortCircuitEngine": "authority",
+        "engineResults": [
+          { "engine": "authority", "result": "FAIL", "detail": "principal agent://analytics-bot/prod is not authorized for infra.command on this boundary" },
+          { "engine": "evidence", "result": "SKIPPED" },
+          { "engine": "constraint", "result": "SKIPPED" },
+          { "engine": "control", "result": "SKIPPED" }
+        ],
+        "errorCode": "EP-7001",
+        "proofId": "ep_pr_01J9ZM7G9J1L3N5Q7S9U1W3Y5A",
+        "proofRecord": {
+          "proofId": "ep_pr_01J9ZM7G9J1L3N5Q7S9U1W3Y5A",
+          "boundaryId": "infra-command-prod",
+          "verdict": "DENY",
+          "decision": {
+            "shortCircuitEngine": "authority",
+            "engineResults": [
+              { "engine": "authority", "result": "FAIL", "detail": "principal not authorized for infra.command on this boundary" },
+              { "engine": "evidence", "result": "SKIPPED" },
+              { "engine": "constraint", "result": "SKIPPED" },
+              { "engine": "control", "result": "SKIPPED" }
+            ],
+            "errorCode": "EP-7001"
+          },
+          "request": {
+            "actionDigest": "sha256:4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e468135",
+            "nonce": "2c8a4f0d7b3e9165",
+            "requestedAt": "2026-08-06T15:10:00Z"
+          },
+          "hashChain": {
+            "prevProofHash": "sha256:092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e46",
+            "thisProofHash": "sha256:6f8a0c2e4681a3c5e7092b4d6f8a0c2e4681a3c5e7092b4d6f8a0c2e46813579"
+          },
+          "signatures": {
+            "hmac": "g5Ey5r4h7V6w3x2y1z0A9B8C7D6E5F4G3H2I1J0K9L8M7N6O5P==",
+            "mldsa65": "MEUCIQDp<truncated-ml-dsa-65-signature-base64>...Fu6q",
+            "kmsKeyId": "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08",
+            "pqPublicKeyId": "pq-2026-08"
+          },
+          "issuedAt": "2026-08-06T15:10:00.043Z"
+        }
+      }
+    }
+  ]
+}

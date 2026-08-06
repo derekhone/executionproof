@@ -1,0 +1,12 @@
+{
+  "ignorePatterns": [
+    { "pattern": "^https://executionproof.io" },
+    { "pattern": "^https://api.executionproof.io" },
+    { "pattern": "^https://github.com/derekhone/" },
+    { "pattern": "^https://zenodo.org/communities/remnant-fieldworks" }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "aliveStatusCodes": [200, 206, 429]
+}

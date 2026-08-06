@@ -1,0 +1,619 @@
+openapi: 3.0.3
+info:
+  title: ExecutionProof API
+  version: "2.0.0"
+  x-release: 1.0.0-public
+  description: |
+    **Production Software — ExecutionProof Pre-Execution Governance Layer.**
+
+    ExecutionProof is an independent pre-execution governance layer for consequential AI actions. Callers
+    submit an action to a **deployment boundary** and receive a signed **ALLOW / HOLD / DENY** verdict plus a
+    tamper-evident **ProofRecord**, before anything irreversible executes.
+
+    The decision engine runs a four-engine sequential pipeline — **Authority -> Evidence -> Constraint ->
+    Control** — that short-circuits on the first failure. Every decision (including HOLD and DENY) emits a
+    ProofRecord signed with hardware-backed ML-DSA-65 post-quantum signing via AWS KMS plus an HMAC integrity
+    layer. Formal RF-100 §8.4 conformance remains pending independent external review.
+
+    ExecutionProof does not execute actions and is not a payment rail. For payments, an ALLOW is handed to a
+    downstream execution/rail partner (e.g. Stripe) that performs the transfer. See PRODUCTION-STATUS.md for
+    what is live versus not yet built.
+  contact:
+    name: Remnant Fieldworks Inc.
+    email: derek@ownerremnantfieldworks.com
+    url: https://executionproof.io
+  license:
+    name: MIT
+    url: https://github.com/derekhone/executionproof/blob/main/LICENSE
+
+servers:
+  - url: https://api.executionproof.io
+    description: Production (pilot access)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Verification
+    description: Verify and execute actions against a deployment boundary.
+  - name: Approvals
+    description: Submit approvals toward an M-of-N quorum on a HELD action.
+  - name: ProofRecords
+    description: Retrieve and independently verify ProofRecords.
+  - name: Crypto
+    description: Public key material for offline ProofRecord verification.
+
+paths:
+  /v2/boundaries/{boundaryId}/verify:
+    post:
+      tags: [Verification]
+      summary: Verify an action
+      description: |
+        Runs the four-engine pipeline over the action and returns a verdict (ALLOW / HOLD / DENY) plus a
+        ProofRecord. This call is side-effect free with respect to downstream execution: it decides, it does
+        not execute.
+      operationId: verifyAction
+      parameters:
+        - $ref: '#/components/parameters/BoundaryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+            examples:
+              allow:
+                summary: A request that passes all engines
+                value:
+                  action:
+                    type: payment.authorize
+                    amountMinor: 4200
+                    currency: USD
+                    payee: acct_downstream_9931
+                    reference: inv_20260806_00042
+                  principal:
+                    id: agent://billing-bot/prod
+                    authProof: eyJhbGciOi...
+                  evidence:
+                    nonce: 9f2c7b1e5a3d4c88
+                    context:
+                      invoiceVerified: true
+                  requestedAt: "2026-08-06T14:00:00Z"
+      responses:
+        '200':
+          description: A verdict was produced (ALLOW, HOLD, or DENY). Inspect `verdict`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/BoundaryNotFound'
+        '409':
+          $ref: '#/components/responses/ReplayDetected'
+
+  /v2/boundaries/{boundaryId}/execute:
+    post:
+      tags: [Verification]
+      summary: Verify and commit execution intent
+      description: |
+        Re-runs verification server-side and, only if the verdict is ALLOW, records committed execution
+        intent (idempotent on the Idempotency-Key). This endpoint exists so a caller can never assert an
+        ALLOW that the server did not produce. It does not itself move money or mutate downstream systems;
+        the caller forwards the committed intent to the downstream execution/rail partner.
+      operationId: executeAction
+      parameters:
+        - $ref: '#/components/parameters/BoundaryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: Execution intent committed for an ALLOW verdict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/BoundaryNotFound'
+        '409':
+          $ref: '#/components/responses/ReplayDetected'
+        '422':
+          description: Verdict was HOLD or DENY; execution intent was not committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+
+  /v2/boundaries/{boundaryId}/approve:
+    post:
+      tags: [Approvals]
+      summary: Submit an approval toward an M-of-N quorum
+      description: |
+        Submits a single approval toward the M-of-N quorum on a HELD action. ExecutionProof enforces distinct,
+        eligible approvers; it does not notify or route to approvers. When the quorum is met, the HOLD clears
+        and a new ProofRecord captures the cleared state.
+      operationId: approveHeldAction
+      parameters:
+        - $ref: '#/components/parameters/BoundaryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalRequest'
+      responses:
+        '200':
+          description: Approval recorded. Quorum may or may not yet be satisfied.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/BoundaryNotFound'
+        '409':
+          description: Invalid, duplicate, or ineligible approver (EP-7006).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/proofrecords/{proofId}:
+    get:
+      tags: [ProofRecords]
+      summary: Retrieve a ProofRecord
+      description: |
+        Returns a ProofRecord for independent verification. The returned record includes its hash chain links
+        and both signature layers so a third party can verify it offline using the published PQ public key.
+      operationId: getProofRecord
+      parameters:
+        - name: proofId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: ep_pr_01J9ZK7QW3H8X2M4N6P0R5T7VB
+      responses:
+        '200':
+          description: The ProofRecord.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofRecord'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: ProofRecord not found or signature/chain verification failed (EP-7007).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v2/crypto/pq-public-key:
+    get:
+      tags: [Crypto]
+      summary: Get the current ML-DSA-65 public key
+      description: |
+        Returns the active ML-DSA-65 post-quantum public key (and any still-valid prior keys) used to verify
+        ProofRecord signatures. Callers cache by `keyId`; ProofRecords reference the `keyId` used to sign them.
+      operationId: getPqPublicKey
+      security: []
+      responses:
+        '200':
+          description: Active and recently-rotated PQ public keys.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PqPublicKeySet'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer token identifying the calling principal. Required on all endpoints except the public key endpoint.
+
+  parameters:
+    BoundaryId:
+      name: boundaryId
+      in: path
+      required: true
+      description: The deployment boundary the action is evaluated against.
+      schema:
+        type: string
+      examples:
+        payment:
+          value: payment-auth-prod
+        infra:
+          value: infra-command-prod
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Client-generated key ensuring the same action is not committed twice.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Malformed request or invalid evidence.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Missing or invalid authentication / authority (EP-7001).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BoundaryNotFound:
+      description: Boundary not found or misconfigured (EP-7005).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ReplayDetected:
+      description: Replay detected — nonce reuse or expired nonce (EP-7008).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Verdict:
+      type: string
+      description: The only possible verdicts.
+      enum: [ALLOW, HOLD, DENY]
+
+    EngineName:
+      type: string
+      enum: [authority, evidence, constraint, control]
+
+    ErrorCode:
+      type: string
+      description: Stable ExecutionProof error codes.
+      enum:
+        - EP-7001
+        - EP-7002
+        - EP-7003
+        - EP-7004
+        - EP-7005
+        - EP-7006
+        - EP-7007
+        - EP-7008
+
+    Action:
+      type: object
+      required: [type]
+      description: The consequential action being verified. Shape varies by boundary.
+      properties:
+        type:
+          type: string
+          description: Action type, e.g. `payment.authorize` or `infra.command`.
+          example: payment.authorize
+        amountMinor:
+          type: integer
+          description: Amount in minor units (payment boundaries).
+          example: 4200
+        currency:
+          type: string
+          example: USD
+        payee:
+          type: string
+        reference:
+          type: string
+        command:
+          type: string
+          description: Command string (infrastructure boundaries).
+        target:
+          type: string
+          description: Target resource (infrastructure boundaries).
+      additionalProperties: true
+
+    Principal:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: agent://billing-bot/prod
+        authProof:
+          type: string
+          description: Opaque proof of the principal's authentication.
+      additionalProperties: false
+
+    Evidence:
+      type: object
+      required: [nonce]
+      properties:
+        nonce:
+          type: string
+          description: Single-use nonce. Reuse or expiry triggers replay protection (EP-7008).
+          example: 9f2c7b1e5a3d4c88
+        context:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
+    VerifyRequest:
+      type: object
+      required: [action, principal, evidence]
+      properties:
+        action:
+          $ref: '#/components/schemas/Action'
+        principal:
+          $ref: '#/components/schemas/Principal'
+        evidence:
+          $ref: '#/components/schemas/Evidence'
+        requestedAt:
+          type: string
+          format: date-time
+      additionalProperties: false
+
+    EngineResult:
+      type: object
+      required: [engine, result]
+      properties:
+        engine:
+          $ref: '#/components/schemas/EngineName'
+        result:
+          type: string
+          enum: [PASS, FAIL, SKIPPED]
+        detail:
+          type: string
+
+    HoldState:
+      type: object
+      description: Present when verdict is HOLD.
+      required: [required, received, satisfied]
+      properties:
+        required:
+          type: integer
+          description: M — approvals required.
+          example: 2
+        eligible:
+          type: integer
+          description: N — eligible approvers.
+          example: 3
+        received:
+          type: integer
+          example: 0
+        satisfied:
+          type: boolean
+          example: false
+        approvers:
+          type: array
+          items:
+            type: string
+
+    VerifyResponse:
+      type: object
+      required: [verdict, proofId, proofRecord]
+      properties:
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+        boundaryId:
+          type: string
+          example: payment-auth-prod
+        shortCircuitEngine:
+          allOf:
+            - $ref: '#/components/schemas/EngineName'
+          nullable: true
+          description: The engine that halted the pipeline, or null on ALLOW.
+        engineResults:
+          type: array
+          items:
+            $ref: '#/components/schemas/EngineResult'
+        errorCode:
+          allOf:
+            - $ref: '#/components/schemas/ErrorCode'
+          nullable: true
+          description: Set on HOLD/DENY, null on ALLOW.
+        hold:
+          $ref: '#/components/schemas/HoldState'
+        proofId:
+          type: string
+          example: ep_pr_01J9ZK7QW3H8X2M4N6P0R5T7VB
+        proofRecord:
+          $ref: '#/components/schemas/ProofRecord'
+
+    ExecuteResponse:
+      type: object
+      required: [verdict, committed, proofId]
+      properties:
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+        committed:
+          type: boolean
+          description: True only when verdict is ALLOW and execution intent was recorded.
+        executionIntentId:
+          type: string
+          example: ep_exec_01J9ZK9F3B2C4D6E8G0H2J4K6M
+        proofId:
+          type: string
+        proofRecord:
+          $ref: '#/components/schemas/ProofRecord'
+
+    ApprovalRequest:
+      type: object
+      required: [proofId, approver]
+      properties:
+        proofId:
+          type: string
+          description: The ProofRecord of the HELD action.
+          example: ep_pr_01J9ZK7QW3H8X2M4N6P0R5T7VB
+        approver:
+          type: string
+          description: Distinct, eligible approver identity.
+          example: user://ops-lead/alice
+        approvalRef:
+          type: string
+          description: Caller-side reference (e.g. ticket id) for audit.
+      additionalProperties: false
+
+    ApprovalResponse:
+      type: object
+      required: [proofId, hold]
+      properties:
+        proofId:
+          type: string
+        cleared:
+          type: boolean
+          description: True when this approval satisfied the M-of-N quorum.
+        hold:
+          $ref: '#/components/schemas/HoldState'
+        newProofId:
+          type: string
+          description: ProofRecord capturing the cleared state, present when cleared is true.
+
+    ProofRecord:
+      type: object
+      description: Tamper-evident receipt of a single verification decision.
+      required: [proofId, boundaryId, verdict, request, hashChain, signatures, issuedAt]
+      properties:
+        proofId:
+          type: string
+          example: ep_pr_01J9ZK7QW3H8X2M4N6P0R5T7VB
+        boundaryId:
+          type: string
+          example: payment-auth-prod
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+        decision:
+          type: object
+          properties:
+            shortCircuitEngine:
+              allOf:
+                - $ref: '#/components/schemas/EngineName'
+              nullable: true
+            engineResults:
+              type: array
+              items:
+                $ref: '#/components/schemas/EngineResult'
+            errorCode:
+              allOf:
+                - $ref: '#/components/schemas/ErrorCode'
+              nullable: true
+        request:
+          type: object
+          required: [actionDigest, nonce, requestedAt]
+          properties:
+            actionDigest:
+              type: string
+              description: SHA-256 digest of the canonicalized action request.
+              example: "sha256:1b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014"
+            nonce:
+              type: string
+              example: 9f2c7b1e5a3d4c88
+            requestedAt:
+              type: string
+              format: date-time
+        hashChain:
+          type: object
+          required: [thisProofHash]
+          properties:
+            prevProofHash:
+              type: string
+              nullable: true
+              description: Hash of the previous ProofRecord on this boundary (null for the first).
+            thisProofHash:
+              type: string
+              description: Hash over the canonicalized record body.
+        signatures:
+          type: object
+          required: [hmac, mldsa65, pqPublicKeyId]
+          properties:
+            hmac:
+              type: string
+              description: HMAC integrity layer over the canonicalized record body (base64).
+            mldsa65:
+              type: string
+              description: ML-DSA-65 post-quantum signature (base64), produced by AWS KMS.
+            kmsKeyId:
+              type: string
+              example: "arn:aws:kms:us-east-1:000000000000:key/ep-pq-2026-08"
+            pqPublicKeyId:
+              type: string
+              description: Key id resolvable via GET /v2/crypto/pq-public-key.
+              example: pq-2026-08
+        issuedAt:
+          type: string
+          format: date-time
+
+    PqPublicKey:
+      type: object
+      required: [keyId, algorithm, publicKey, status]
+      properties:
+        keyId:
+          type: string
+          example: pq-2026-08
+        algorithm:
+          type: string
+          example: ML-DSA-65
+        publicKey:
+          type: string
+          description: Base64-encoded ML-DSA-65 public key.
+        status:
+          type: string
+          enum: [active, rotating, retired]
+        notAfter:
+          type: string
+          format: date-time
+          nullable: true
+
+    PqPublicKeySet:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/PqPublicKey'
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+            engine:
+              allOf:
+                - $ref: '#/components/schemas/EngineName'
+              nullable: true
+            proofId:
+              type: string
+              nullable: true
+              description: ProofRecord issued for the rejected decision, when applicable.
+            requestId:
+              type: string
+      example:
+        error:
+          code: EP-7008
+          message: "Replay detected: nonce has already been used."
+          engine: evidence
+          proofId: ep_pr_01J9ZKB2N4Q6S8U0W2Y4A6C8E
+          requestId: req_01J9ZKB2N4
