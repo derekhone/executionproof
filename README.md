@@ -2,7 +2,7 @@
 
 > **Production Software — ExecutionProof Pre-Execution Governance Layer**
 
-[![CI](https://gokite.ai/figs/Scope.jpg)
+[![CI](https://github.com/derekhone/executionproof/actions/workflows/ci.yml/badge.svg)](https://github.com/derekhone/executionproof/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![RF-100](https://img.shields.io/badge/Standard-RF--100%20v1.0-blue.svg)](https://github.com/derekhone/rf-100)
 [![Website](https://img.shields.io/badge/site-executionproof.io-black.svg)](https://executionproof.io)
