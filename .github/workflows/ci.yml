@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  contract:
+    name: Validate API contract & examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install validators
+        run: |
+          pip install pyyaml jsonschema openapi-spec-validator
+      
+      - name: Validate OpenAPI contract
+        run: |
+          python -c "
+          from openapi_spec_validator import validate_spec
+          from openapi_spec_validator.readers import read_from_filename
+          spec_dict, spec_url = read_from_filename('docs/openapi.yaml')
+          validate_spec(spec_dict)
+          print('✅ OpenAPI 3.0 contract valid')
+          "
+      
+      - name: Ensure YAML files parse
+        run: |
+          python -c "
+          import yaml
+          for path in ['docs/openapi.yaml', 'CITATION.cff']:
+              with open(path) as f:
+                  yaml.safe_load(f)
+              print(f'✅ {path} parses')
+          "
+      
+      - name: Ensure example scenarios are valid JSON
+        run: |
+          python -c "
+          import json
+          from pathlib import Path
+          for scenario in Path('examples').rglob('scenarios.json'):
+              with open(scenario) as f:
+                  json.load(f)
+              print(f'✅ {scenario} is valid JSON')
+          "
+
+  lint:
+    name: Lint Markdown & check links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: '**/*.md'
+      
+      - name: Check links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          config-file: '.github/markdown-link-check.json'
