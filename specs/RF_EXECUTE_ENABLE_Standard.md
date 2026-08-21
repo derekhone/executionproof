@@ -175,6 +175,7 @@ An EXECUTE_ENABLE authorization cycle consists of five steps:
 **Step 4 — Signal assertion.** If and only if the outcome is ALLOW, the verifier drives `EXECUTE_ENABLE` HIGH for the duration and scope specified in the policy contract. For HOLD or DENY, the signal is not asserted.
 
 **Step 5 — Consequence, suspension, or safe state.**
+
 - ALLOW: the gate confirms the assertion is from a recognized verifier and passes it to the device; the device produces the authorized consequence. The gate logs the assertion event.
 - HOLD: the signal is not asserted. The device remains in its safe state. The gate logs the HOLD event. The authorization cycle is suspended and may resume after re-evaluation (see §4.2a).
 - DENY: the signal is not asserted. The device remains in its safe state. The gate logs the DENY event.

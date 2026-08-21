@@ -278,6 +278,7 @@ A compliant gate MUST verify that the current time is within the package's expir
 
 **Requirement G6 — Decision Binding**
 A compliant gate MUST respect the verifier_decision field.
+
 - DENY: the gate MUST block the action.
 - HOLD: the gate MUST suspend the action pending external resolution. It MUST NOT release a HOLDed action without a subsequent re-evaluation by the verifier producing ALLOW. It MUST NOT treat HOLD as DENY (the authorization cycle may resume with new independent evaluation). During HOLD, the device or system remains in its safe state.
 - ALLOW: the gate MAY release execution after G2 through G5 are satisfied.
