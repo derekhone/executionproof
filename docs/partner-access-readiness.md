@@ -1,3 +1,5 @@
+<!-- markdownlint-configure-file { "MD041": { "level": 3 } } -->
+
 ### Controlled pilot access — operational readiness gate
 
 This checklist is not a contract, acceptance mechanism, or claim that controls are deployed. Wider access should wait for the accountable RF owner to record:

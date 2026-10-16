@@ -1,11 +1,10 @@
 # ExecutionProof™
 
-### Reference vs. Production
+**Reference vs. Production**
 
 This repository publishes research/reference material or public integration interfaces; its specific scope is below. It does not ship RF's private production backend. Experimental behavior, fixture policies, local/test keys and published results apply only to the identified implementation and stated conditions. Do not use public test keys as production trust roots or treat fixture conformance as proof of production security. This notice does not change existing licenses, results, preregistrations or preserved failures.
 
 This repository supplies public interface documentation, examples and architecture descriptions, not the production decision-engine implementation. Documentation and example conformance do not independently establish deployment, operational security or RF-100 conformance.
-
 
 > **Production Software — ExecutionProof Pre-Execution Governance Layer**
 
