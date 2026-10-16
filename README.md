@@ -1,5 +1,12 @@
 # ExecutionProof™
 
+### Reference vs. Production
+
+This repository publishes research/reference material or public integration interfaces; its specific scope is below. It does not ship RF's private production backend. Experimental behavior, fixture policies, local/test keys and published results apply only to the identified implementation and stated conditions. Do not use public test keys as production trust roots or treat fixture conformance as proof of production security. This notice does not change existing licenses, results, preregistrations or preserved failures.
+
+This repository supplies public interface documentation, examples and architecture descriptions, not the production decision-engine implementation. Documentation and example conformance do not independently establish deployment, operational security or RF-100 conformance.
+
+
 > **Production Software — ExecutionProof Pre-Execution Governance Layer**
 
 [![CI](https://github.com/derekhone/executionproof/actions/workflows/ci.yml/badge.svg)](https://github.com/derekhone/executionproof/actions/workflows/ci.yml)
@@ -175,3 +182,17 @@ Released under the [MIT License](LICENSE). © 2026 Remnant Fieldworks Inc.
 *Built in faith. Tested in public. Claims kept narrower than the evidence.*
 
 **Remnant Fieldworks Inc. — Derek Hone, CEO**
+
+### API route scope — do not assume aliases
+
+| Surface | Published verification route | Scope |
+|---|---|---|
+| Builder site and VaultProof client | `POST /v2/verify` | Advertised/client-default route; workflow/proposed_action/actor/context payload. |
+| ExecutionProof OpenAPI | `POST /v2/boundaries/{boundaryId}/verify` | Published boundary-scoped specification with its own request/response schema. |
+| EP-AGENT controlled reference verifier | `POST /verify` | Frozen research contract only; not a production endpoint alias. |
+
+These paths and payloads are not proven interchangeable. A URL-only substitution is not a compatibility fix. Before integration, obtain the deployment-specific versioned contract from RF, including route, request/response fields and authentication requirements. Until that contract is confirmed, do not infer a canonical deployed route or silently rewrite client requests. This clarification does not change runtime behavior, the OpenAPI specification or historical reference contracts.
+
+### Controlled pilot access
+
+See the [operational readiness gate](docs/partner-access-readiness.md). This is not a contract or evidence that controls have been deployed; hosted-access terms require separate approval and acceptance.
