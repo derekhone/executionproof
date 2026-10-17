@@ -6,7 +6,10 @@ This repository publishes research/reference material or public integration inte
 
 This repository supplies public interface documentation, examples and architecture descriptions, not the production decision-engine implementation. Documentation and example conformance do not independently establish deployment, operational security or RF-100 conformance.
 
-> **Production Software — ExecutionProof Pre-Execution Governance Layer**
+> **Reference & specification for the ExecutionProof pre-execution governance layer.**
+> This repository is the public product surface (architecture, API contract, worked examples). Public hosted-API
+> availability and a live AWS KMS-backed signing path are **not verified in this repository** — see
+> [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md).
 
 [![CI](https://github.com/derekhone/executionproof/actions/workflows/ci.yml/badge.svg)](https://github.com/derekhone/executionproof/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -28,9 +31,9 @@ signed **ALLOW / HOLD / DENY** verdict — plus a tamper-evident **ProofRecord�
 | **What is it?** | A drop-in verification checkpoint that an AI agent (or its orchestrator) calls *before* executing a consequential action. It answers one question: *should this specific action be allowed to execute right now?* |
 | **Who is it for?** | Teams deploying AI agents that can move money, change infrastructure, release data, or grant access — where an incorrect or unauthorized action is expensive or irreversible. |
 | **What does it return?** | A signed **ALLOW / HOLD / DENY** decision and a **ProofRecord™** — a tamper-evident receipt of *why* that decision was made, verifiable independently and after the fact. |
-| **What is the first production boundary?** | **Payment authorization.** It is the lighthouse deployment, not the whole market — the same architecture governs infrastructure commands, data release, access changes, and deployment operations. |
-| **How do I see it work?** | [Five-minute local demo](#five-minute-local-demo) using the shipped example scenarios and the OpenAPI contract. Live hosted API is available under pilot access. |
-| **Is it done?** | The decision engine, ProofRecord signing, approval state machine, and replay protection are live. Notification delivery, identity/SSO integration, and an approval-routing UI are **not yet built** — see [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md). We keep this table honest on purpose. |
+| **What is the first boundary?** | **Payment authorization** is the designated first production boundary (the lighthouse target), not the whole market — the same architecture is designed to govern infrastructure commands, data release, access changes, and deployment operations. |
+| **How do I see it work?** | [Five-minute local demo](#five-minute-local-demo) using the shipped example scenarios and the OpenAPI contract. Pilot integrations are scoped directly with Remnant Fieldworks; deployment route, authentication, and environment are confirmed per pilot. |
+| **Is it done?** | The decision engine, ProofRecord signing, approval state machine, and replay protection are **implemented** in RF's codebase. Public hosted-API availability and independent live verification are **not established in this repository**. Notification delivery, identity/SSO integration, and an approval-routing UI are **not yet built** — see [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md). We keep this table honest on purpose. |
 
 ---
 
@@ -71,10 +74,12 @@ failure is a policy that requires human approval rather than an outright rejecti
 - **Constraint** — Does the action stay inside the configured limits (amounts, rates, allow-lists, blast radius)?
 - **Control** — Is the execution-state safe (idempotency, quorum satisfied, no conflicting in-flight action)?
 
-Each decision emits a **ProofRecord™**: a hash-linked, dual-signed receipt (**hardware-backed ML-DSA-65
-post-quantum signing via AWS KMS**, plus an HMAC integrity layer) that can be verified independently, later,
-by a party who does not trust the caller. Formal RF-100 §8.4 conformance remains pending independent external
-review.
+Each decision emits a **ProofRecord™**: a hash-linked, dual-signed receipt (**ML-DSA-65 (FIPS 204) post-quantum
+signatures** — RF's production signing is designed around AWS KMS-backed keys — plus an HMAC integrity layer)
+designed to be verified independently, later, by a party who does not trust the caller. The live hosted
+public-key path for that independent verification is **not verified in this repository** (see
+[PRODUCTION-STATUS.md](PRODUCTION-STATUS.md)). Formal RF-100 §8.4 conformance remains pending independent
+external review.
 
 > The **Enterprise** configuration extends this to eight engines (adding Coherence Envelope, Gate Layers, Rail
 > Classifier, and Rail Enforcement). This repository documents the four-engine core that is generally available.
@@ -117,9 +122,10 @@ less examples/infrastructure-command/scenarios.json
 ```
 
 Every request/response pair in `examples/` validates against the schemas in
-[`docs/openapi.yaml`](docs/openapi.yaml). To exercise a **live** endpoint (`/v2/boundaries/{boundaryId}/verify`,
-`/execute`, `/approve`, and ProofRecord retrieval), request **pilot access** — see
-[executionproof.io](https://executionproof.io).
+[`docs/openapi.yaml`](docs/openapi.yaml). Exercising a hosted endpoint
+(`/v2/boundaries/{boundaryId}/verify`, `/execute`, `/approve`, and ProofRecord retrieval) is arranged through a
+pilot: **pilot integrations are scoped directly with Remnant Fieldworks, and deployment route, authentication,
+and environment are confirmed per pilot.** Public hosted-API availability is not verified in this repository.
 
 ## API at a glance
 
@@ -143,6 +149,31 @@ quorum, ProofRecord/signature, and **replay protection**). See [ARCHITECTURE.md]
 - **[examples/infrastructure-command/](examples/infrastructure-command/)** — the *same* engine governing a
   destructive infrastructure command, to show the layer is not payments-only.
 
+## Cross-framework portability evidence
+
+In a preregistered RF-internal study, a pinned ExecutionProof reference verifier integrated across OpenAI Agents
+SDK, LangGraph, CrewAI, and Microsoft Agent Framework across 20 benign framework × case cells, with 20/20
+decision fidelity and 20/20 ProofRecord linkage, without modifying the core decision engine.
+
+**Scope limits (read before citing):** Not adversarial. Not multi-agent. Not production validation. Not
+independently reproduced.
+
+- Preregistration DOI: [10.5281/zenodo.23407844](https://doi.org/10.5281/zenodo.23407844)
+- Results DOI: [10.5281/zenodo.23407994](https://doi.org/10.5281/zenodo.23407994)
+
+## For technical buyers
+
+A fast path to answer the questions a technical evaluator asks first:
+
+| Question | Short answer | Where to confirm |
+|---|---|---|
+| **What is it?** | A pre-execution governance layer that returns a signed ALLOW / HOLD / DENY verdict plus a ProofRecord before a consequential action executes. | [top of this README](#what-this-is-in-one-screen), [ARCHITECTURE.md](ARCHITECTURE.md) |
+| **Where does it sit?** | Between an agent's *decision* and the *downstream system* (payment rail, infrastructure, data store). It decides whether; the downstream system executes. | [Where this fits](#where-this-fits) |
+| **What has actually been demonstrated?** | Preregistered case records and experiments (public datasets), and a preregistered RF-internal cross-framework portability study (20/20 fidelity + ProofRecord linkage). Scope limits stated inline. | [Cross-framework portability evidence](#cross-framework-portability-evidence), [Zenodo community](https://zenodo.org/communities/remnant-fieldworks) |
+| **What can I test locally?** | The five-minute local demo over the shipped examples and the OpenAPI contract — no credentials, no network. | [Five-minute local demo](#five-minute-local-demo) |
+| **What would a pilot look like?** | Pilot integrations are scoped directly with Remnant Fieldworks. Deployment route, authentication, and environment are confirmed per pilot. Public hosted-API availability is not verified in this repository. | [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md), [docs/partner-access-readiness.md](docs/partner-access-readiness.md) |
+| **How do I contact RF?** | Via [executionproof.io](https://executionproof.io); security reports via [SECURITY.md](SECURITY.md). | — |
+
 ## Where this fits
 
 - **Not a payment rail, and not a competitor to one.** Stripe (and equivalents) are **downstream
@@ -165,7 +196,7 @@ have been granted; these are pending applications.
 | Document | What's in it |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Four-engine pipeline, ProofRecord signing, ALLOW/HOLD/DENY semantics, M-of-N HOLD flow, deployment boundary, threat model, honest limitations. |
-| [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md) | Explicit table of what is live vs. not yet built / pilot-config scope. |
+| [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md) | Explicit table of what is implemented vs. not yet built / pilot-config scope, plus public endpoint availability. |
 | [docs/openapi.yaml](docs/openapi.yaml) | Full OpenAPI 3.0 contract. |
 | [docs/architecture-diagram.md](docs/architecture-diagram.md) | Rendered Mermaid diagrams. |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting, supported versions, response timeline. |
