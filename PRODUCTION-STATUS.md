@@ -142,8 +142,8 @@ environment are confirmed per pilot and are not represented by the public endpoi
 
 The claims above are backed by published, preregistered evidence:
 
-- **253 case records: 250 PASS, 2 FAIL, 1 GATE-STOP.**
-- **75 preregistered experiments.**
+- **More than 100 documented experiments across multiple research families, including preserved failures and
+  remediations.**
 - Datasets archived in the [Remnant Fieldworks Zenodo community](https://zenodo.org/communities/remnant-fieldworks).
 - Governing standard: [RF-100 v1.0](https://github.com/derekhone/rf-100) (public review).
 

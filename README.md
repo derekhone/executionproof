@@ -183,8 +183,9 @@ A fast path to answer the questions a technical evaluator asks first:
   free, open-source agent-side guard. [RF-100](https://github.com/derekhone/rf-100) is the governing standard
   (v1.0, public review).
 - **Reproducibility.** Preregistered experiments and case records are published for independent scrutiny:
-  **253 case records: 250 PASS, 2 FAIL, 1 GATE-STOP** across **75 preregistered experiments**. Datasets are
-  archived in the [Remnant Fieldworks Zenodo community](https://zenodo.org/communities/remnant-fieldworks).
+  **more than 100 documented experiments across multiple research families, including preserved failures and
+  remediations.** Datasets are archived in the
+  [Remnant Fieldworks Zenodo community](https://zenodo.org/communities/remnant-fieldworks).
 
 ## Intellectual property
 
