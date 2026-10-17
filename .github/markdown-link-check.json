@@ -3,7 +3,8 @@
     { "pattern": "^https://executionproof.io" },
     { "pattern": "^https://api.executionproof.io" },
     { "pattern": "^https://github.com/derekhone/" },
-    { "pattern": "^https://zenodo.org/communities/remnant-fieldworks" }
+    { "pattern": "^https://zenodo.org/communities/remnant-fieldworks" },
+    { "pattern": "^https://doi.org" }
   ],
   "timeout": "20s",
   "retryOn429": true,
