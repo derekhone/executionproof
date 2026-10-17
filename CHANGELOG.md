@@ -1,6 +1,9 @@
 # Changelog
 
-> **Production Software — ExecutionProof Pre-Execution Governance Layer**
+> **Changelog — ExecutionProof Pre-Execution Governance Layer.** This repository publishes
+> reference/specification material; see [PRODUCTION-STATUS.md](PRODUCTION-STATUS.md) for what is implemented
+> versus publicly available. Public hosted-API availability and a live AWS KMS-backed signing path are not
+> verified in this repository.
 
 All notable changes to this repository are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
